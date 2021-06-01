@@ -1,0 +1,11 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Export to Xcframework"
+  lane :create_framework do
+    create_xcframework(
+      scheme: 'MyFrameworkTest',
+      xcframework_output_directory: 'artifacts/xcframework'
+    )
+  end
+end
