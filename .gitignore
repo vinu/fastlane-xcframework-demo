@@ -92,3 +92,4 @@ iOSInjectionProject/
 # Local xcframework export path
 
 artifacts/
+Pods/
