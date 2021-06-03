@@ -25,6 +25,9 @@ platform :ios do
       xc_dsym_path = "#{dsyms_path}/#{lib['LibraryPath']}.#{lib['LibraryIdentifier']}.dSYM"
       FileUtils.mv xc_dsym_path, "#{libpath}/dSYMS/#{lib['LibraryPath']}.dSYM"
       framework_path = "#{xcpath}/#{lib['LibraryIdentifier']}/#{lib['LibraryPath']}/#{File.basename(lib['LibraryPath'], '.framework')}"
+      if lib['SupportedPlatformVariant'] == 'simulator' 
+        next
+      end
       dwarfdump_output = sh ("dwarfdump --uuid #{framework_path}")
       dwarf_uuids.each { |dwarf_uuid| 
         if dwarfdump_output.include? dwarf_uuid
