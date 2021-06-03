@@ -3,9 +3,38 @@ default_platform(:ios)
 platform :ios do
   desc "Export to Xcframework"
   lane :create_framework do
+    export_path = 'artifacts/xcframework'
+    puts("Removing old artifacts from '#{export_path}'")
+    FileUtils.rm_rf("../#{export_path}")
     create_xcframework(
       scheme: 'MyFrameworkTest',
-      xcframework_output_directory: 'artifacts/xcframework'
+      xcframework_output_directory: export_path,
+      remove_xcarchives: true
     )
+
+    UI.important "Adjusting for cocopod release"
+    xcpath = ENV['XCFRAMEWORK_OUTPUT_PATH']
+    dsyms_path = ENV['XCFRAMEWORK_DSYM_OUTPUT_PATH']
+    bcsym_path = ENV['XCFRAMEWORK_BCSYMBOLMAPS_OUTPUT_PATH']
+    
+    dwarf_uuids = Dir["#{bcsym_path}/*"].map { |f| File.basename(f, '.bcsymbolmap') }
+    plist = File.open("#{xcpath}/info.plist") { |f| Plist.parse_xml(f) }
+    plist['AvailableLibraries'].each { |lib| 
+      libpath = "#{xcpath}/#{lib['LibraryIdentifier']}"
+      FileUtils.mkdir_p("#{libpath}/dSYMS")
+      xc_dsym_path = "#{dsyms_path}/#{lib['LibraryPath']}.#{lib['LibraryIdentifier']}.dSYM"
+      FileUtils.mv xc_dsym_path, "#{libpath}/dSYMS/#{lib['LibraryPath']}.dSYM"
+      framework_path = "#{xcpath}/#{lib['LibraryIdentifier']}/#{lib['LibraryPath']}/#{File.basename(lib['LibraryPath'], '.framework')}"
+      dwarfdump_output = sh ("dwarfdump --uuid #{framework_path}")
+      dwarf_uuids.each { |dwarf_uuid| 
+        if dwarfdump_output.include? dwarf_uuid
+          FileUtils.mkdir_p("#{libpath}/BCSymbolMaps")
+          FileUtils.mv "#{bcsym_path}/#{dwarf_uuid}.bcsymbolmap", "#{libpath}/BCSymbolMaps/"
+        end
+      }
+    }
+    FileUtils.rm_rf("#{dsyms_path}")
+    FileUtils.rm_rf("#{bcsym_path}")
+    UI.important "Done adjusting for cocopod release"
   end
 end
